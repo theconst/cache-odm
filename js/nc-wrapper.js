@@ -48,24 +48,6 @@ class Connection extends nc.ODBCConnection {
         super.disconnect(cb);
     }
 
-    beginTransaction(isolationLevel, cb) {
-        if (typeof isolationLevel == 'function') {
-            cb = isolationLevel;
-            isolationLevel = '';
-        }
-        isolationLevel = isolationLevel || '';
-        const isolationLevelKeyword = isolationLevel && 'ISOLATION LEVEL' || '';
-        super.execute(`START TRANSACTION ${isolationLevelKeyword} ${isolationLevel}`.trim(), cb);
-    }
-
-    commit(cb) {
-        super.execute('COMMIT', cb);
-    }
-
-    rollback(cb) {
-        super.execute('ROLLBACK', cb);
-    }
-
     prepareStatement(query, cb) {
         const statement = new Statement(this);
         statement.prepare(query, (err) => cb(err, statement));

@@ -91,7 +91,7 @@ describe('Wrapper spec', function() {
         });
     })
 
-    it('should commit statements in transaction', function() {
+    xit('should commit statements in transaction', function() {
         const connection = nc.createConnection(dsn);
 
         return Promise.coroutine(function*() {
@@ -127,7 +127,7 @@ describe('Wrapper spec', function() {
         })();
     });
 
-    it('should rollback statements in transaction', function() {
+    xit('should rollback statements in transaction', function() {
         const connection = nc.createConnection(dsn);
 
         return Promise.coroutine(function*() {

@@ -155,12 +155,9 @@ describe('Wrapper spec', function() {
 
 
     after(function() {
-        const connection = nc.createConnection();
-        return connection.connectPromise(dsn)
-        .then(() => connection.executePromise(`
-            DROP TABLE ${tableName}
-        `))
-        .finally(() => connection.closePromise());
+        return nc.createConnectionPromise(dsn)
+        .tap(c => c.executePromise(`DROP TABLE ${tableName}`))
+        .tap(c => c.closePromise());
     });
 
 });

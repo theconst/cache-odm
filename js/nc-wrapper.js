@@ -1,7 +1,7 @@
 'use strict'
 
 const nc = require("nanodbc");
-const {promisifyAll} = require('bluebird');
+const {promisifyAll, Promise} = require('bluebird');
 
 const promisifySettings = {
     suffix: 'Promise',
@@ -60,6 +60,17 @@ class ConnectionFactory {
     // do not allow synchronous creation
     static createConnection() {
         return new Connection();
+    }
+
+    static createConnectionPromise(dsn) {
+        return Promise.coroutine(function*() {
+            const connection = new Connection();
+
+            //!
+            yield connection.connectPromise(dsn || 'DSN=CacheWinHost');
+            
+            return connection;
+        })();
     }
 }
 

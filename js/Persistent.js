@@ -12,7 +12,7 @@ const getSchemaQuery = `
 const defaultBatchSize = 10;
 const defaultNamespace = 'SQLUser';
 
-const schema = Symbol('shema');
+const schema = Symbol('schema');
 class Persistent {
 
     static _getTable() {
@@ -39,10 +39,18 @@ class Persistent {
 
             return self[schema] = {
                 table: [self._getNamespace(), self._getTable()].join('.'),
-                primaryKey: fields.filter(f => f['pk'] === 'YES').map(f => f['cn']),
+                primaryKeys: fields.filter(f => f['pk'] === 'YES').map(f => f['cn']),
                 fields: fields.map(f => f['cn']),
             };
         })());
+    }
+
+    static _fromResult(result) {
+        const object = new this();
+
+        Object.assign(object, result);
+
+        return object;
     }
 
     static openId(id) {
@@ -56,7 +64,8 @@ class Persistent {
 
             log.log('debug', 'Schema: %s', schema);
 
-            const query = `SELECT * FROM ${schema.table} WHERE ${schema.primaryKey.map(k => `${k} = ?`).join(',')}`;
+            const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
+            const query = `SELECT * FROM ${schema.table} WHERE ${pks}`;
 
             log.log('debug', 'Insert query: %s', query);
             const statement = yield connection.prepareStatementPromise(query);
@@ -69,12 +78,7 @@ class Persistent {
             if (resultSet.length > 1) {
                 return Promise.reject('Item not unique');
             }
-
-            const object = new self();
-
-            Object.assign(object, resultSet[0]);
-
-            return Promise.resolve(object);
+            return Promise.resolve(self._fromResult(resultSet[0]));
         })();
     }
 
@@ -89,7 +93,8 @@ class Persistent {
 
             log.log('debug', 'Schema: %s', schema);
 
-            const query = `SELECT 1 FROM ${schema.table} WHERE ${schema.primaryKey.map(k => `${k} = ?`).join(' AND ')}`;
+            const pks = schema.primaryKeys.map(k => `${k} = ?`).join(' AND ');
+            const query = `SELECT 1 FROM ${schema.table} WHERE ${pks}`;
 
             log.log('debug', 'Exists query: %s', query);
 
@@ -117,7 +122,9 @@ class Persistent {
             log.log('debug', 'Schema: %s', schema);
 
             const keys = Object.keys(keyValue);
-            const query = `SELECT * FROM ${schema.table} WHERE ${keys.map(k => `${k} = ?`).join(' AND ')}`;
+
+            const andKeys = keys.map(k => `${k} = ?`).join(' AND ');
+            const query = `SELECT * FROM ${schema.table} WHERE ${andKeys}`;
 
             log.log('debug', 'Find by query: %s', query);
 
@@ -126,12 +133,7 @@ class Persistent {
             const values = Object.values(keyValue);
             const result = yield statement.queryPromise(values);
 
-            return Promise.resolve(result.map(r => {
-                const object = new self();
-                Object.assign(object, r);
-
-                return object;
-            }));
+            return Promise.resolve(result.map(r => self._fromResult(r)));
         })();
     }
 
@@ -146,7 +148,8 @@ class Persistent {
 
             log.log('debug', 'Schema: %s', schema);
 
-            const query = `DELETE FROM ${schema.table} WHERE ${schema.primaryKey.map(k => `${k} = ?`).join(',')}`;
+            const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
+            const query = `DELETE FROM ${schema.table} WHERE ${pks}`;
 
             log.log('debug', 'Delete query: %s', query);
 
@@ -167,7 +170,9 @@ class Persistent {
 
             log.log('debug', 'Schema: %s', schema);
 
-            const query = `INSERT OR UPDATE INTO ${schema.table}(${schema.fields.join(',')}) VALUES(${schema.fields.map(() => '?').join(',')})`;
+            const fields = schema.fields.join(',');
+            const placeholders = schema.fields.map(() => '?').join(',');
+            const query = `INSERT OR UPDATE INTO ${schema.table}(${fields}) VALUES(${placeholders})`;
 
             log.log('debug', 'Save query: %s', query);
 
@@ -184,7 +189,7 @@ class Persistent {
     delete() {
         const constructor = this.constructor;
         return constructor._getSchemaPromise()
-            .then(schema => constructor.deleteId(schema.primaryKey.map(k => this[k])));
+            .then(schema => constructor.deleteId(schema.primaryKeys.map(k => this[k])));
     }
 
 }

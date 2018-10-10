@@ -39,8 +39,8 @@ describe('Persistent spec', function() {
         .then(() => connection.executePromise(`
             CREATE TABLE ${schema}.${tableName} (
                 id INT NOT NULL,
-                lastName   CHAR(30) NOT NULL,
-                firstName  CHAR(30) NOT NULL,
+                lastName   CHAR(30),
+                firstName  CHAR(30),
                 CONSTRAINT IDPK PRIMARY KEY(id)
             )
         `.replace(/\r?\n/gm," ")))
@@ -126,9 +126,30 @@ describe('Persistent spec', function() {
 
         return saved.then(() => EmployeeTest.existsId(5))
             .tap(r => expect(r).to.be.true)
-            .tap(() => EmployeeTest.deleteId(1))
-            .then(() => EmployeeTest.existsId(1))
+            .tap(() => EmployeeTest.deleteId(5))
+            .then(() => EmployeeTest.existsId(5))
             .tap(r => expect(r).to.be.false);
+    });
+
+    it('should modify entity', function() {
+        const john = new EmployeeTest();
+        john.id = 5;
+        john.lastName = 'Smith';
+        john.fistName = 'John';
+
+        const saved = john.save();
+
+        return saved.then(() => EmployeeTest.existsId(5))
+            .tap(r => expect(r).to.be.true)
+            .then(() => EmployeeTest.openId(5))
+            .then(john => {
+                john.lastName = 'Wesson';
+                return john.save();
+            })
+            .then(() => EmployeeTest.openId(5))
+            .tap(wesson => {
+                expect(wesson.lastName).to.be.equal('Wesson');
+            });
     });
 
     after(function() {

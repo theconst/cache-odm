@@ -2,6 +2,8 @@ const Promise = require('bluebird').Promise;
 
 const Session = require('./Session');
 
+const PersistentProxy = require('./PersistentProxy');
+
 const log = require('./logger');
 
 const getSchemaQuery = `
@@ -51,7 +53,7 @@ class Persistent {
 
         Object.assign(object, result);
 
-        return object;
+        return PersistentProxy.createProxy(object);
     }
 
     static openId(id, projection) {
@@ -153,9 +155,10 @@ class Persistent {
         const self = this;
         return Session.transact(connection => {
             return self.constructor._getSchemaPromise().then(schema => {
+                log.log('debug', 'Projection: %s', projection);
                 log.log('debug', 'Schema: %s', schema);
 
-                const fields = projection || schema.fields;
+                const fields = projection && schema.primaryKeys.concat(projection) || schema.fields;
 
                 const csFields = fields.join(',');
                 const placeholders = fields.map(() => '?').join(',');
@@ -165,6 +168,8 @@ class Persistent {
                 
 
                 const values = fields.map(f => this[f] || 'NULL');
+                log.log('debug', 'Values: %s', values, {});
+
                 return connection.prepareStatementPromise(query)
                     .then(statement => statement.executePromise(values))
                     .then(() => self);

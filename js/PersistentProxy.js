@@ -28,5 +28,5 @@ const proxyHandler = {
 
 
 module.exports = {
-    createProxy: persistent => new Proxy(persistent, proxyHandler),
+    createProxy: persistent => persistent instanceof Proxy ? persistent : new Proxy(persistent, proxyHandler),
 }

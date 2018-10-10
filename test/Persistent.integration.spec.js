@@ -143,10 +143,11 @@ describe('Persistent spec', function() {
             .tap(r => expect(r).to.be.true)
             .then(() => EmployeeTest.openId(5))
             .then(john => {
+                john.id = 6;
                 john.lastName = 'Wesson';
                 return john.save();
             })
-            .then(() => EmployeeTest.openId(5))
+            .then(() => EmployeeTest.openId(6))
             .tap(wesson => {
                 expect(wesson.lastName).to.be.equal('Wesson');
             });

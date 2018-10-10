@@ -64,7 +64,7 @@ class Persistent {
                 log.log('debug', 'Schema: %s', schema);
 
                 const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
-                const csFields = projection && projection.join(',') || '*';
+                const csFields = projection && [...projection].join(',') || '*';
                 const query = `SELECT ${csFields} FROM ${schema.table} WHERE ${pks}`;
     
                 log.log('debug', 'OpenId query: %s', query);
@@ -120,7 +120,7 @@ class Persistent {
                 const keys = Object.keys(keyValue);
 
                 const andKeys = keys.map(k => `${k} = ?`).join(',');
-                const csFields = projection && projection.join(',') || '*'
+                const csFields = projection && [...projection].join(',') || '*'
                 const query = `SELECT ${csFields} FROM ${schema.table} WHERE ${andKeys}`;
 
                 log.log('debug', 'Find by query: %s', query);
@@ -158,7 +158,8 @@ class Persistent {
                 log.log('debug', 'Projection: %s', projection);
                 log.log('debug', 'Schema: %s', schema);
 
-                const fields = projection && schema.primaryKeys.concat(projection) || schema.fields;
+                const fields = projection && Array.from(new Set([...schema.primaryKeys, ...projection])) 
+                    || schema.fields;
 
                 const csFields = fields.join(',');
                 const placeholders = fields.map(() => '?').join(',');

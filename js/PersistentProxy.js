@@ -18,7 +18,7 @@ const proxyHandler = {
 
     get: function(target, property) {
         if (property === 'save') {
-            const dirty = Array.from(target[dirtyProperties]);
+            const dirty = target[dirtyProperties];
             log.log('debug', `Saving only %j`, dirty, {});
             return projection => target['save'].call(target, projection || dirty);
         }

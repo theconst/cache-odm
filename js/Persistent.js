@@ -54,7 +54,7 @@ class Persistent {
         return object;
     }
 
-    static openId(id) {
+    static openId(id, projection) {
         id = Array.isArray(id) ? id : [id];
         const constructor = this;
         return Session.transact(connection => {
@@ -62,7 +62,8 @@ class Persistent {
                 log.log('debug', 'Schema: %s', schema);
 
                 const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
-                const query = `SELECT * FROM ${schema.table} WHERE ${pks}`;
+                const csFields = projection && projection.join(',') || '*';
+                const query = `SELECT ${csFields} FROM ${schema.table} WHERE ${pks}`;
     
                 log.log('debug', 'OpenId query: %s', query);
 
@@ -108,7 +109,7 @@ class Persistent {
         });
     }
 
-    static findBy(keyValue) {
+    static findBy(keyValue, projection) {
         const constructor = this;
         return Session.transact(connection => {
             return constructor._getSchemaPromise().then(schema => {
@@ -116,8 +117,9 @@ class Persistent {
 
                 const keys = Object.keys(keyValue);
 
-                const andKeys = keys.map(k => `${k} = ?`).join(' AND ');
-                const query = `SELECT * FROM ${schema.table} WHERE ${andKeys}`;
+                const andKeys = keys.map(k => `${k} = ?`).join(',');
+                const csFields = projection && projection.join(',') || '*'
+                const query = `SELECT ${csFields} FROM ${schema.table} WHERE ${andKeys}`;
 
                 log.log('debug', 'Find by query: %s', query);
 

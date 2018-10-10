@@ -147,20 +147,22 @@ class Persistent {
         });
     } 
 
-    save() {
+    save(projection) {
         const self = this;
         return Session.transact(connection => {
             return self.constructor._getSchemaPromise().then(schema => {
                 log.log('debug', 'Schema: %s', schema);
 
-                const fields = schema.fields.join(',');
-                const placeholders = schema.fields.map(() => '?').join(',');
-                const query = `INSERT OR UPDATE INTO ${schema.table}(${fields}) VALUES(${placeholders})`;
+                const fields = projection || schema.fields;
+
+                const csFields = fields.join(',');
+                const placeholders = fields.map(() => '?').join(',');
+                const query = `INSERT OR UPDATE INTO ${schema.table}(${csFields}) VALUES(${placeholders})`;
     
                 log.log('debug', 'Save query: %s', query);
                 
 
-                const values = schema.fields.map(f => this[f] || 'NULL');
+                const values = fields.map(f => this[f] || 'NULL');
                 return connection.prepareStatementPromise(query)
                     .then(statement => statement.executePromise(values))
                     .then(() => self);

@@ -155,7 +155,6 @@ class Persistent {
         const self = this;
         return Session.transact(connection => {
             return self.constructor._getSchemaPromise().then(schema => {
-                log.log('debug', 'Projection: %j', projection);
                 log.log('debug', 'Schema: %j', schema);
 
                 const fields = projection && Array.from(new Set([...schema.primaryKeys, ...projection])) 

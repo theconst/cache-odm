@@ -14,6 +14,8 @@ const nc = require('../js/nc-wrapper');
 
 const Persistent = require('../js/Persistent');
 
+const pool = require('../js/Pool');
+
 describe('Persistent spec', function() {
     this.timeout(config['timeout']);
 
@@ -135,7 +137,8 @@ describe('Persistent spec', function() {
         .then(() => connection.executePromise(`
             DROP TABLE ${schema}.${tableName}
         `))
-        .finally(() => connection.closePromise());
+        .finally(() => connection.closePromise())
+        .finally(() => pool.drain());
     });
 
 });

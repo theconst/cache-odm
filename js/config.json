@@ -1,0 +1,6 @@
+{
+    "poolSizeMin" : 3,
+    "poolSizeMax" : 3,
+    "evictionInterval" : 60000,
+    "dsn": "DSN=CacheWinHost"
+}

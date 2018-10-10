@@ -57,7 +57,6 @@ class Connection extends nc.ODBCConnection {
 
 promisifyAll(Connection.prototype, promisifySettings);
 class ConnectionFactory {
-    // do not allow synchronous creation
     static createConnection() {
         return new Connection();
     }
@@ -65,9 +64,7 @@ class ConnectionFactory {
     static createConnectionPromise(dsn) {
         return Promise.coroutine(function*() {
             const connection = new Connection();
-
-            //!
-            yield connection.connectPromise(dsn || 'DSN=CacheWinHost');
+            yield connection.connectPromise(dsn);
             
             return connection;
         })();

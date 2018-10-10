@@ -1,6 +1,7 @@
 const Promise = require('bluebird').Promise;
 
-const nc = require('./nc-wrapper');
+const Session = require('./Session');
+
 const log = require('./logger');
 
 const getSchemaQuery = `
@@ -24,25 +25,25 @@ class Persistent {
     }
 
     static _getSchemaPromise() {
-        const self = this;
-        return Promise.resolve(self[schema] || Promise.coroutine(function*() {
-            const connection = yield nc.createConnectionPromise();
-            const statement = yield connection.prepareStatementPromise(getSchemaQuery);
-
-            const bindings = [self._getTable(), self._getNamespace()];
-
-            log.log('debug', 'Bindings: %j', bindings, {});
-            const fields = yield statement.queryPromise({
-                bindings: bindings,
-                batchSize: defaultBatchSize,
-            });
-
-            return self[schema] = {
-                table: [self._getNamespace(), self._getTable()].join('.'),
-                primaryKeys: fields.filter(f => f['pk'] === 'YES').map(f => f['cn']),
-                fields: fields.map(f => f['cn']),
-            };
-        })());
+        const constructor = this;
+        return Promise.resolve(constructor[schema] ||
+            Session.transact(connection => {
+                return connection.prepareStatementPromise(getSchemaQuery)
+                    .then(statement => {
+                        const bindings = [constructor._getTable(), constructor._getNamespace()];
+                        log.log('debug', 'Bindings: %j', bindings, {});
+                        return statement.queryPromise({
+                            bindings: bindings,
+                            batchSize: defaultBatchSize,
+                        });
+                    }).then(fields => {
+                        return constructor[schema] = {
+                            table: [constructor._getNamespace(), constructor._getTable()].join('.'),
+                            primaryKeys: fields.filter(f => f['pk'] === 'YES').map(f => f['cn']),
+                            fields: fields.map(f => f['cn']),
+                        };
+                    });
+            }));
     }
 
     static _fromResult(result) {
@@ -54,142 +55,124 @@ class Persistent {
     }
 
     static openId(id) {
-        if (!Array.isArray(id)) {
-            id = [id];
-        }
-        const self = this;
-        return Promise.coroutine(function*() {
-            const connection = yield nc.createConnectionPromise();
-            const schema = yield self._getSchemaPromise();
+        id = Array.isArray(id) ? id : [id];
+        const constructor = this;
+        return Session.transact(connection => {
+            return constructor._getSchemaPromise().then(schema => {
+                log.log('debug', 'Schema: %s', schema);
 
-            log.log('debug', 'Schema: %s', schema);
+                const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
+                const query = `SELECT * FROM ${schema.table} WHERE ${pks}`;
+    
+                log.log('debug', 'OpenId query: %s', query);
 
-            const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
-            const query = `SELECT * FROM ${schema.table} WHERE ${pks}`;
-
-            log.log('debug', 'Insert query: %s', query);
-            const statement = yield connection.prepareStatementPromise(query);
-
-            const resultSet = yield statement.queryPromise(id);
-
-            if (resultSet.length === 0) {
-                return Promise.resolve(null);
-            }
-            if (resultSet.length > 1) {
-                return Promise.reject('Item not unique');
-            }
-            return Promise.resolve(self._fromResult(resultSet[0]));
-        })();
+                return connection.prepareStatementPromise(query)
+                    .then(statement => statement.queryPromise(id))
+                    .then(resultSet => {
+                        if (resultSet.length === 0) {
+                            return null;
+                        }
+                        if (resultSet.length > 1) {
+                            return Promise.reject('Item not unique');
+                        }
+                        return constructor._fromResult(resultSet[0]);
+                    });
+            });
+        });
     }
 
     static existsId(id) {
-        if (!Array.isArray(id)) {
-            id = [id];
-        }
-        const self = this;
-        return Promise.coroutine(function*() {
-            const connection = yield nc.createConnectionPromise();
-            const schema = yield self._getSchemaPromise();
-
-            log.log('debug', 'Schema: %s', schema);
-
-            const pks = schema.primaryKeys.map(k => `${k} = ?`).join(' AND ');
-            const query = `SELECT 1 FROM ${schema.table} WHERE ${pks}`;
-
-            log.log('debug', 'Exists query: %s', query);
-
-            const statement = yield connection.prepareStatementPromise(query);
-
-            const resultSet = yield statement.queryPromise(id);
-
-            if (resultSet.length === 0) {
-                return Promise.resolve(false);
-            }
-            if (resultSet.length > 1) {
-                return Promise.reject('Item not unique');
-            }
-
-            return Promise.resolve(true);
-        })();
+        id = Array.isArray(id) ? id : [id];
+        const constructor = this;
+        return Session.transact(connection => {
+            return constructor._getSchemaPromise().then(schema => {
+                log.log('debug', 'Schema: %s', schema);
+    
+                const pks = schema.primaryKeys.map(k => `${k} = ?`).join(' AND ');
+                const query = `SELECT 1 FROM ${schema.table} WHERE ${pks}`;
+    
+                log.log('debug', 'Exists query: %s', query);
+    
+                return connection.prepareStatementPromise(query)
+                    .then(statement => statement.queryPromise(id))
+                    .then(resultSet => {
+                        if (resultSet.length === 0) {
+                            return false;
+                        }
+                        if (resultSet.length > 1) {
+                            return Promise.reject('Item not unique');
+                        }
+                        return true;
+                    });
+            });
+        });
     }
 
     static findBy(keyValue) {
-        const self = this;
-        return Promise.coroutine(function*() {
-            const connection = yield nc.createConnectionPromise();
-            const schema = yield self._getSchemaPromise();
+        const constructor = this;
+        return Session.transact(connection => {
+            return constructor._getSchemaPromise().then(schema => {
+                log.log('debug', 'Schema: %s', schema);
 
-            log.log('debug', 'Schema: %s', schema);
+                const keys = Object.keys(keyValue);
 
-            const keys = Object.keys(keyValue);
+                const andKeys = keys.map(k => `${k} = ?`).join(' AND ');
+                const query = `SELECT * FROM ${schema.table} WHERE ${andKeys}`;
 
-            const andKeys = keys.map(k => `${k} = ?`).join(' AND ');
-            const query = `SELECT * FROM ${schema.table} WHERE ${andKeys}`;
+                log.log('debug', 'Find by query: %s', query);
 
-            log.log('debug', 'Find by query: %s', query);
-
-            const statement = yield connection.prepareStatementPromise(query);
-
-            const values = Object.values(keyValue);
-            const result = yield statement.queryPromise(values);
-
-            return Promise.resolve(result.map(r => self._fromResult(r)));
-        })();
+                const values = Object.values(keyValue);
+                return connection.prepareStatementPromise(query)
+                    .then(statement => statement.queryPromise(values))
+                    .then(resultSet => resultSet.map(r => constructor._fromResult(r)));
+            });
+        });
     }
 
     static deleteId(id) {
-        if (!Array.isArray(id)) {
-            id = [id];
-        }
-        const self = this;
-        return Promise.coroutine(function*() {
-            const connection = yield nc.createConnectionPromise();
-            const schema = yield self._getSchemaPromise();
+        id = Array.isArray(id) ? id : [id];
+        const constructor = this;
+        return Session.transact(connection => {
+            return constructor._getSchemaPromise().then(schema => {
+                log.log('debug', 'Schema: %s', schema);
 
-            log.log('debug', 'Schema: %s', schema);
-
-            const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
-            const query = `DELETE FROM ${schema.table} WHERE ${pks}`;
-
-            log.log('debug', 'Delete query: %s', query);
-
-            const statement = yield connection.prepareStatementPromise(query);
-
-            yield statement.executePromise(id);
-
-            return Promise.resolve(null);
-        })();
+                const pks = schema.primaryKeys.map(k => `${k} = ?`).join(',');
+                const query = `DELETE FROM ${schema.table} WHERE ${pks}`;
+    
+                log.log('debug', 'Delete query: %s', query);
+    
+                return connection.prepareStatementPromise(query)
+                    .then(statement => statement.executePromise(id));
+            });
+        });
     } 
 
     save() {
-        const constructor = this.constructor;
         const self = this;
-        return Promise.coroutine(function*() {
-            const connection = yield nc.createConnectionPromise();
-            const schema = yield constructor._getSchemaPromise();
+        return Session.transact(connection => {
+            return self.constructor._getSchemaPromise().then(schema => {
+                log.log('debug', 'Schema: %s', schema);
 
-            log.log('debug', 'Schema: %s', schema);
+                const fields = schema.fields.join(',');
+                const placeholders = schema.fields.map(() => '?').join(',');
+                const query = `INSERT OR UPDATE INTO ${schema.table}(${fields}) VALUES(${placeholders})`;
+    
+                log.log('debug', 'Save query: %s', query);
+                
 
-            const fields = schema.fields.join(',');
-            const placeholders = schema.fields.map(() => '?').join(',');
-            const query = `INSERT OR UPDATE INTO ${schema.table}(${fields}) VALUES(${placeholders})`;
-
-            log.log('debug', 'Save query: %s', query);
-
-            const statement = yield connection.prepareStatementPromise(query);
-            
-            const values = schema.fields.map(f => self[f] || 'NULL');
-
-            yield statement.executePromise(values);
-
-            return Promise.resolve(self);
-        })();
+                const values = schema.fields.map(f => this[f] || 'NULL');
+                return connection.prepareStatementPromise(query)
+                    .then(statement => statement.executePromise(values))
+                    .then(() => self);
+            });
+        });
     }
 
     delete() {
-        const constructor = this.constructor;
-        return constructor._getSchemaPromise()
-            .then(schema => constructor.deleteId(schema.primaryKeys.map(k => this[k])));
+        const self = this;
+        return self.constructor._getSchemaPromise()
+            .then(schema => 
+                self.constructor.deleteId(schema.primaryKeys.map(k => self[k])));
     }
 
 }

@@ -24,7 +24,7 @@
     "bluebird": "^3.5.2",
     "generic-pool": "^3.4.2",
     "nanodbc": "file:aodbc",
-    "squel": "^5.12.2",
+    "sql": "^0.78.0",
     "winston": "^3.1.0"
   }
 }

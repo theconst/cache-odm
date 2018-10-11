@@ -2,9 +2,9 @@ const log = require('./logger');
 
 const dirtyProperties = Symbol('dirtyProperties');
 
-const proxyHandler = {
+class ProxyHandler {
 
-    set: function(target, name, value) {
+    static set(target, name, value) {
         if (!target[dirtyProperties]) {
             log.log('debug', 'Creating array of dirty properties');
             target[dirtyProperties] = new Set();
@@ -14,9 +14,9 @@ const proxyHandler = {
         target[name] = value;
 
         return true;
-    },
+    }
 
-    get: function(target, property) {
+    static get(target, property) {
         if (property === 'save') {
             const dirty = target[dirtyProperties];
             log.log('debug', 'Saving only dirty');
@@ -28,5 +28,7 @@ const proxyHandler = {
 
 
 module.exports = {
-    createProxy: persistent => persistent instanceof Proxy ? persistent : new Proxy(persistent, proxyHandler),
+    createProxy: persistent => persistent instanceof Proxy 
+        ? persistent 
+        : new Proxy(persistent, ProxyHandler),
 }

@@ -91,13 +91,15 @@ describe('Wrapper spec', function() {
         });
     })
 
-    xit('should commit statements in transaction', function() {
+    it('should commit statements in transaction', function() {
         const connection = nc.createConnection(dsn);
 
         return Promise.coroutine(function*() {
             yield connection.connectPromise(dsn);
 
-            yield connection.beginTransactionPromise('READ COMMITTED');
+            yield connection.setAutoCommitPromise(false);
+
+            yield connection.beginTransactionPromise();
             
             yield connection.executePromise(`
                 INSERT INTO ${tableName}(EMPNUM, NAMELAST, NAMEFIRST, 
@@ -127,7 +129,7 @@ describe('Wrapper spec', function() {
         })();
     });
 
-    xit('should rollback statements in transaction', function() {
+    it('should rollback statements in transaction', function() {
         const connection = nc.createConnection(dsn);
 
         return Promise.coroutine(function*() {
@@ -148,7 +150,6 @@ describe('Wrapper spec', function() {
             
             expect(res).to.exist;
             expect(res).to.be.an('array');
-
             expect(res).to.deep.equal([]);
         })();
     });

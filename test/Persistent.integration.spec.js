@@ -56,8 +56,6 @@ describe('Persistent spec', function() {
         const saved = john.save();
 
         return saved.then(() => {
-            console.log('1');
-
             return EmployeeTest.openId(1)
                 .tap(result => {
                     expect(result).to.be.instanceOf(EmployeeTest);

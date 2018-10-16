@@ -1,11 +1,15 @@
 'use strict'
 
-const nc = require("nanodbc");
+const nc = require('nanodbc');
 const {promisifyAll, Promise} = require('bluebird');
+
+const LRU = require('lru-cache');
 
 const promisifySettings = {
     suffix: 'Promise',
 };
+
+const config = require('./config');
 
 const log = require('./logger');
 
@@ -43,9 +47,9 @@ promisifyAll(Transaction.prototype, promisifySettings);
 const transaction = Symbol('transaction');
 const statementCache = Symbol('statementCache');
 class Connection extends nc.ODBCConnection {
-    constructor() {
+    constructor(options) {
         super();
-        this[statementCache] = new Map();
+        this[statementCache] = LRU(options && options.cacheSize || config['cacheSize']);
     }
 
     connect(dsn, timeoutOrCb, cb) {
@@ -133,12 +137,14 @@ class Connection extends nc.ODBCConnection {
 
 promisifyAll(Connection.prototype, promisifySettings);
 class ConnectionFactory {
-    static createConnection() {
-        return new Connection();
+    static createConnection(options) {
+        return new Connection(options);
     }
 
-    static createConnectionPromise(dsn) {
-        const connection = new Connection();
+    static createConnectionPromise(options) {
+        const dsnOnly = typeof options == 'string';
+        const dsn = dsnOnly && options || options.dsn;
+        const connection = dsnOnly ? new Connection : new Connection(options);
         return connection.connectPromise(dsn).then(() => connection);    
     }
 }

@@ -146,6 +146,11 @@ class Persistent {
         }));
     } 
 
+    attach() {
+        return this.constructor._getSchemaPromise()
+            .fmap(schema => this.constructor.openId(schema.primaryKeys.map(k => this[k])));
+    }
+
     save(projection) {
         const self = this;
         return self.constructor._getSchemaPromise()

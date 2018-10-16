@@ -94,6 +94,12 @@ class Connection extends nc.ODBCConnection {
     }
 
     forcePrepareStatement(query, cb) {
+        const createStatement = () => {
+            const newStatement = new Statement(this);
+            newStatement.prepare(query, err => {
+                cb(err, newStatement);
+            });
+        }
         log.debug('Forcing `%s` udpdate', query)
         const cache = this[statementCache];
         const statement = cache.get(query);
@@ -103,10 +109,10 @@ class Connection extends nc.ODBCConnection {
                 if (err) {
                     return cb(err);
                 }
-                this.prepareStatement(query, cb);
+                return createStatement();
             });
         }
-        this.prepareStatement(query, cb);
+        return createStatement();
     }
 
     prepareStatement(query, cb) {
@@ -117,7 +123,6 @@ class Connection extends nc.ODBCConnection {
             return cb(null, cached);
         }
         const statement = new Statement(this);
-
         statement.prepare(query, err => {
             err || cache.set(query, statement);
             cb(err, statement);

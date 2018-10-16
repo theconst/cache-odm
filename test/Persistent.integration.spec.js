@@ -137,6 +137,36 @@ describe('Persistent spec', function() {
         });
     });
 
+    it('should attach object', function() {
+        const john = new EmployeeTest();
+        john.id = 6;
+        john.lastName = 'Smith';
+        john.firstName = 'John';
+
+        return Session.transact(() => {
+            return john.save();
+        }).then(() => Session.transact(() => {
+            const johnDetached = new EmployeeTest();
+            johnDetached.id = 6;
+            return johnDetached.attach()
+                .tap(r => {
+                    expect(r).to.deep.equal(john);
+                })
+                .fmap(r => {
+                    r.lastName = 'Wesson';
+                    return r.save();
+                });
+        })).then(() => Session.transact(() => {
+            return EmployeeTest.openId(6);
+        }).tap(r => {
+            expect(r).to.deep.equal({
+                id: 6,
+                lastName: 'Wesson',
+                firstName: 'John',
+            });
+        }));
+    });
+
     it('should modify entity', function() {
         const john = new EmployeeTest();
         john.id = 5;

@@ -142,9 +142,9 @@ class ConnectionFactory {
     }
 
     static createConnectionPromise(options) {
-        const dsnOnly = typeof options == 'string';
+        const dsnOnly = typeof options === 'string';
         const dsn = dsnOnly && options || options.dsn;
-        const connection = dsnOnly ? new Connection : new Connection(options);
+        const connection = dsnOnly ? new Connection() : new Connection(options);
         return connection.connectPromise(dsn).then(() => connection);    
     }
 }

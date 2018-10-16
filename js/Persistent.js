@@ -6,11 +6,13 @@ const PersistentProxy = require('./PersistentProxy');
 
 const log = require('./logger');
 
+const Converter = require('./TypeConverter');
+
 const getSchemaQuery = `
-    SELECT COLUMN_NAME cn, PRIMARY_KEY pk
+    SELECT COLUMN_NAME cn, PRIMARY_KEY pk, DATA_TYPE dt
     FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = ? AND TABLE_SCHEMA = ?`
-    .replace(/\r?\n/gm, " ");
+    WHERE TABLE_NAME = ?, TABLE_SCHEMA = ?
+`.replace(/\r?\n/gm, " ");
 
 const defaultBatchSize = 10;
 const defaultNamespace = 'SQLUser';
@@ -41,6 +43,7 @@ class Persistent {
                 const cached = constructor[schema] = {
                     table: [constructor._getNamespace(), constructor._getTable()].join('.'),
                     primaryKeys: fields.filter(f => f['pk'] === 'YES').map(f => f['cn']),
+                    types: fields.map(f => f['dt']),
                     fields: fields.map(f => f['cn']),
                 };
                 return cached;
@@ -167,7 +170,8 @@ class Persistent {
                 log.log('debug', 'Save query: %s', query);
                 
 
-                const values = fields.map(f => this[f] || 'NULL');
+                const values = fields.map((f, i) => 
+                    Converter.convert(this[f], schema.types[i]) || 'NULL');
                 log.log('debug', 'Values: %s', values, {});
 
                 const result = connection.forcePrepareStatementPromise(query)

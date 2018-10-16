@@ -42,7 +42,7 @@ class Persistent {
             .then(statement => statement.queryPromise([self._getNamespace(), name])))
             .then(result => {
                 if (result.length === 0) {
-                    return Promise.reject('Class method not found');
+                    return Promise.reject(`Classmethod ${name} not found`);
                 }
                 return result[0]['rt'];
             });

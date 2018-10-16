@@ -83,6 +83,8 @@ describe('Wrapper spec', function() {
         `.replace(/\r?\n/gm, " ")))
         .tap(statement => {
             return statement.queryPromise(['EMPTY'])
+                // test that it works twice
+                .then(() => statement.queryPromise(['NONE']))
                 .then(result => {
                     expect(result).to.exist;
                     expect(result).to.be.an('array');

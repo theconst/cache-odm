@@ -7,6 +7,8 @@ const promisifySettings = {
     suffix: 'Promise',
 };
 
+const log = require('./logger');
+
 class Statement extends nc.ODBCStatement {
 
     constructor(conneciton) {
@@ -39,9 +41,11 @@ class Transaction extends nc.ODBCTransaction {
 promisifyAll(Transaction.prototype, promisifySettings);
 
 const transaction = Symbol('transaction');
+const statementCache = Symbol('statementCache');
 class Connection extends nc.ODBCConnection {
     constructor() {
         super();
+        this[statementCache] = new Map();
     }
 
     connect(dsn, timeoutOrCb, cb) {
@@ -60,10 +64,10 @@ class Connection extends nc.ODBCConnection {
         const oldTx = this[transaction];
         oldTx && oldTx.rollback(err => {
             if (err) {
-                cb(err);
+                return cb(err);
             }
-            //? https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_commit
-            cb(new Error('Intersystems Cache does not allow nested transactions. Use savepoints'));
+            // https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_commit
+            return cb(new Error('Intersystems Cache does not allow nested transactions. Use savepoints'));
         });
         const tx = this[transaction] = new Transaction(this);
         tx.begin(err => cb(err, tx));
@@ -71,7 +75,7 @@ class Connection extends nc.ODBCConnection {
 
     _checkTx(tx, cb) {
         if (!tx) {
-            cb(new Error('No transaction associated with connection'));
+            return cb(new Error('No transaction associated with connection'));
         }
     }
 
@@ -89,9 +93,35 @@ class Connection extends nc.ODBCConnection {
         tx.rollback(err => cb(err));
     }
 
+    forcePrepareStatement(query, cb) {
+        log.debug('Forcing `%s` udpdate', query)
+        const cache = this[statementCache];
+        const statement = cache.get(query);
+        if (statement) {
+            cache.delete(query);
+            return statement.close(err => {
+                if (err) {
+                    return cb(err);
+                }
+                this.prepareStatement(query, cb);
+            });
+        }
+        this.prepareStatement(query, cb);
+    }
+
     prepareStatement(query, cb) {
+        const cache = this[statementCache];
+        const cached = cache.get(query);
+        if (cached) {
+            log.debug('Using `%s` from cache', query);
+            return cb(null, cached);
+        }
         const statement = new Statement(this);
-        statement.prepare(query, (err) => cb(err, statement));
+
+        statement.prepare(query, err => {
+            err || cache.set(query, statement);
+            cb(err, statement);
+        });
     }
 }
 
@@ -103,12 +133,8 @@ class ConnectionFactory {
     }
 
     static createConnectionPromise(dsn) {
-        return Promise.coroutine(function*() {
-            const connection = new Connection();
-            yield connection.connectPromise(dsn);
-            
-            return connection;
-        })();
+        const connection = new Connection();
+        return connection.connectPromise(dsn).then(() => connection);    
     }
 }
 

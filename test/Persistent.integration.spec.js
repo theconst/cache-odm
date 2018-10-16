@@ -16,6 +16,8 @@ const Persistent = require('../js/Persistent');
 
 const pool = require('../js/Pool');
 
+const Session = require('../js/Session');
+
 describe('Persistent spec', function() {
     this.timeout(config['timeout']);
 
@@ -53,11 +55,10 @@ describe('Persistent spec', function() {
         john.lastName = 'Smith';
         john.firstName = 'John';
 
-        const saved = john.save();
-
-        return saved.then(() => {
-            return EmployeeTest.openId(1)
-                .tap(result => {
+        return Session.transact(() => {
+            return john.save()
+                .fmap(() => EmployeeTest.openId(1))
+                .map(result => {
                     expect(result).to.be.instanceOf(EmployeeTest);
                     expect(result).to.deep.equal(john);
                 });
@@ -70,10 +71,11 @@ describe('Persistent spec', function() {
         john.lastName = 'Smith';
         john.firstName = 'John';
 
-        const saved = john.save();
+        return Session.transact(() => {
+            const saved = john.save();
 
-        return saved.then(() => {
-            return EmployeeTest.openId(2)
+            return saved.fmap(() => 
+                EmployeeTest.openId(2)
                 .tap(result => {
                     expect(result).to.be.instanceOf(EmployeeTest);
                     expect(result).to.deep.equal(john);
@@ -84,7 +86,7 @@ describe('Persistent spec', function() {
                         .tap(r => {
                             expect(r).to.not.exist;
                         });
-                });
+                }));
         });
     });
 
@@ -94,11 +96,10 @@ describe('Persistent spec', function() {
         john.lastName = 'Smithers';
         john.firstName = 'John'; 
 
-        const saved = john.save();
-
-        return saved.then(() => {
-            return EmployeeTest.findBy({
-                lastName: 'Smithers',
+        return Session.transact(() => 
+            john.save().fmap(() => {
+                return EmployeeTest.findBy({
+                    lastName: 'Smithers',
             })
             .tap(result => {
                 expect(result).to.be.an('array');
@@ -110,8 +111,13 @@ describe('Persistent spec', function() {
                     lastName: 'Smithers',
                     firstName: 'John',
                 });
+            })
+            .fmap(result => {
+                return EmployeeTest.findBy({
+                    'lastName': 'Smithers',
+                })
             });
-        })
+        }));
     });
 
     it('should return exists', function() {
@@ -120,13 +126,15 @@ describe('Persistent spec', function() {
         john.lastName = 'Smith';
         john.fistName = 'John';
 
-        const saved = john.save();
+        return Session.transact(() => {
+            const saved = john.save();
 
-        return saved.then(() => EmployeeTest.existsId(5))
-            .tap(r => expect(r).to.be.true)
-            .tap(() => EmployeeTest.deleteId(5))
-            .then(() => EmployeeTest.existsId(5))
-            .tap(r => expect(r).to.be.false);
+            return saved.fmap(() => EmployeeTest.existsId(5))
+                .tap(r => expect(r).to.be.true)
+                .fmap(() => EmployeeTest.deleteId(5))
+                .fmap(() => EmployeeTest.existsId(5))
+                .tap(r => expect(r).to.be.false);
+        });
     });
 
     it('should modify entity', function() {
@@ -135,20 +143,22 @@ describe('Persistent spec', function() {
         john.lastName = 'Smith';
         john.fistName = 'John';
 
-        const saved = john.save();
+        Session.transact(() => {
+            const saved = john.save();
 
-        return saved.then(() => EmployeeTest.existsId(5))
-            .tap(r => expect(r).to.be.true)
-            .then(() => EmployeeTest.openId(5))
-            .then(john => {
-                john.id = 6;
-                john.lastName = 'Wesson';
-                return john.save();
-            })
-            .then(() => EmployeeTest.openId(6))
-            .tap(wesson => {
-                expect(wesson.lastName).to.be.equal('Wesson');
-            });
+            return saved.fmap(() => EmployeeTest.existsId(5))
+                .tap(r => expect(r).to.be.true)
+                .fmap(() => EmployeeTest.openId(5))
+                .fmap(john => {
+                    john.id = 6;
+                    john.lastName = 'Wesson';
+                    return john.save();
+                })
+                .fmap(() => EmployeeTest.openId(6))
+                .tap(wesson => {
+                    expect(wesson.lastName).to.be.equal('Wesson');
+                });
+        });        
     });
 
     after(function() {

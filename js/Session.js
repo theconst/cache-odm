@@ -1,22 +1,35 @@
 const pool = require('./Pool');
 
+module.exports = {
 
-class Session {
+    transact: doInTransaction => {
+        return pool.acquire().then(connection => {
+            const started = connection.beginTransactionPromise();
+            const done = started.then(() => doInTransaction().run(connection));
 
-    static transact(doInTransaction) {
-        return pool.acquire()
-            .then(connection => {
-                const done = doInTransaction(connection);
+            return done
+                .tap(() => connection.commitPromise())
+                .tap(() => pool.release(connection))
+                .catch(err => {
+                    return connection.rollbackPromise()
+                        .tap(() => pool.release(connection))
+                        .catch(err => {
+                            pool.destroy(connection);
+                            return Promise.reject(err);
+                        })
+                        .then(() => Promise.reject(err));
+                });
+        });
+    },
 
-                return done.then()
-                    .tap(() => pool.release(connection))
-                    .catch(err => {
-                        pool.release(connection);
-                        return Promise.reject(err);
-                    });
-            });
+    exec: doInAutoCommit => {
+        return pool.acquire().then(connection => {
+            return doInAutoCommit().run(connection)
+                .tap(() => pool.release(connection))
+                .catch(err => {
+                    pool.destroy(connection);
+                    return Promise.reject(err);
+                });
+        });
     }
-
-}
-
-module.exports = Session;
+};

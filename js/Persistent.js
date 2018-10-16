@@ -8,14 +8,21 @@ const log = require('./logger');
 
 const Converter = require('./TypeConverter');
 
+const config = require('./config');
+
 const getSchemaQuery = `
     SELECT COLUMN_NAME cn, PRIMARY_KEY pk, DATA_TYPE dt
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_NAME = ?, TABLE_SCHEMA = ?
 `.replace(/\r?\n/gm, " ");
 
+const getRoutineTypeQuery = `
+    SELECT ROUTINE_TYPE rt FROM INFORMATION_SCHEMA.ROUTINES
+    WHERE SPECIFIC_SCHEMA = ?, SPECIFIC_NAME = ?
+`.replace(/\r?\n/gm, " ");
+
 const defaultBatchSize = 10;
-const defaultNamespace = 'SQLUser';
+const defaultNamespace = config[defaultNamespace];
 
 const schema = Symbol('schema');
 class Persistent {
@@ -26,6 +33,19 @@ class Persistent {
 
     static _getNamespace() {
         return this.description && this.description.namespace || defaultNamespace;
+    }
+
+    static _getRoutineTypePromise(name) {
+        const self = this;
+        return Reader(connection => 
+            connection.preapareStatementPromise(getRoutineTypeQuery)
+            .then(statement => statement.queryPromise([self._getNamespace(), name])))
+            .then(result => {
+                if (result.length === 0) {
+                    return Promise.reject('Class method not found');
+                }
+                return result[0]['rt'];
+            });
     }
 
     static _getSchemaPromise() {
@@ -83,6 +103,26 @@ class Persistent {
                         return constructor._fromResult(resultSet[0]);
                     });
             }));
+    }
+
+    static call() {
+        const self = this;
+        const methodName = arguments[0];
+        const functionArgs = arguments.slice(1);
+
+        return self._getRoutineTypePromise(methodName)
+            .fmap(routineType => 
+                self._getSchemaPromise()
+                    .fmap(schema => Reader(connection => {
+                        const placeholders = functionArgs.map(() => '?').join(',');
+                        const query = `CALL ${schema.table}_${methodName}(${placeholders})`;
+                        return connection
+                            .prepareStatementPromise(query)
+                            .then(statement => ({
+                                'PROCEDURE': () => statement.executePromise(functionArgs),
+                                'FUNCTION': () => statement.queryPromise(functionArgs),
+                            }[routineType]()));
+                    })));
     }
 
     static existsId(id) {
@@ -154,6 +194,7 @@ class Persistent {
             .fmap(schema => this.constructor.openId(schema.primaryKeys.map(k => this[k])));
     }
 
+    // never project onto user input - TODO: sanitize
     save(projection) {
         const self = this;
         return self.constructor._getSchemaPromise()

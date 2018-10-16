@@ -13,16 +13,16 @@ const config = require('./config');
 const getSchemaQuery = `
     SELECT COLUMN_NAME cn, PRIMARY_KEY pk, DATA_TYPE dt
     FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = ?, TABLE_SCHEMA = ?
+    WHERE TABLE_NAME = ? AND TABLE_SCHEMA = ?
 `.replace(/\r?\n/gm, " ");
 
 const getRoutineTypeQuery = `
     SELECT ROUTINE_TYPE rt FROM INFORMATION_SCHEMA.ROUTINES
-    WHERE SPECIFIC_SCHEMA = ?, SPECIFIC_NAME = ?
+    WHERE SPECIFIC_SCHEMA = ? AND SPECIFIC_NAME = ?
 `.replace(/\r?\n/gm, " ");
 
 const defaultBatchSize = 10;
-const defaultNamespace = config[defaultNamespace];
+const defaultNamespace = config['defaultNamespace'];
 
 const schema = Symbol('schema');
 class Persistent {

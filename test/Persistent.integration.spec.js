@@ -57,7 +57,7 @@ describe('Persistent spec', function() {
 
         return Session.transact(() => {
             return john.save()
-                .fmap(() => EmployeeTest.openId(1))
+                .flatMap(() => EmployeeTest.openId(1))
                 .map(result => {
                     expect(result).to.be.instanceOf(EmployeeTest);
                     expect(result).to.deep.equal(john);
@@ -74,7 +74,7 @@ describe('Persistent spec', function() {
         return Session.transact(() => {
             const saved = john.save();
 
-            return saved.fmap(() => 
+            return saved.flatMap(() => 
                 EmployeeTest.openId(2)
                 .tap(result => {
                     expect(result).to.be.instanceOf(EmployeeTest);
@@ -97,7 +97,7 @@ describe('Persistent spec', function() {
         john.firstName = 'John'; 
 
         return Session.transact(() => 
-            john.save().fmap(() => {
+            john.save().flatMap(() => {
                 return EmployeeTest.findBy({
                     lastName: 'Smithers',
             })
@@ -112,7 +112,7 @@ describe('Persistent spec', function() {
                     firstName: 'John',
                 });
             })
-            .fmap(result => {
+            .flatMap(result => {
                 return EmployeeTest.findBy({
                     'lastName': 'Smithers',
                 })
@@ -129,10 +129,10 @@ describe('Persistent spec', function() {
         return Session.transact(() => {
             const saved = john.save();
 
-            return saved.fmap(() => EmployeeTest.existsId(5))
+            return saved.flatMap(() => EmployeeTest.existsId(5))
                 .tap(r => expect(r).to.be.true)
-                .fmap(() => EmployeeTest.deleteId(5))
-                .fmap(() => EmployeeTest.existsId(5))
+                .flatMap(() => EmployeeTest.deleteId(5))
+                .flatMap(() => EmployeeTest.existsId(5))
                 .tap(r => expect(r).to.be.false);
         });
     });
@@ -152,7 +152,7 @@ describe('Persistent spec', function() {
                 .tap(r => {
                     expect(r).to.deep.equal(john);
                 })
-                .fmap(r => {
+                .flatMap(r => {
                     r.lastName = 'Wesson';
                     return r.save();
                 });
@@ -176,15 +176,15 @@ describe('Persistent spec', function() {
         Session.transact(() => {
             const saved = john.save();
 
-            return saved.fmap(() => EmployeeTest.existsId(5))
+            return saved.flatMap(() => EmployeeTest.existsId(5))
                 .tap(r => expect(r).to.be.true)
-                .fmap(() => EmployeeTest.openId(5))
-                .fmap(john => {
+                .flatMap(() => EmployeeTest.openId(5))
+                .flatMap(john => {
                     john.id = 6;
                     john.lastName = 'Wesson';
                     return john.save();
                 })
-                .fmap(() => EmployeeTest.openId(6))
+                .flatMap(() => EmployeeTest.openId(6))
                 .tap(wesson => {
                     expect(wesson.lastName).to.be.equal('Wesson');
                 });

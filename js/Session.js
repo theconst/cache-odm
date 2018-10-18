@@ -31,5 +31,7 @@ module.exports = {
                     return Promise.reject(err);
                 });
         });
-    }
+    },
+
+    destroy: () => pool.drain(),
 };

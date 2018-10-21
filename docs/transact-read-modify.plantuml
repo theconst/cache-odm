@@ -1,0 +1,59 @@
+@startuml Cache ODM Sequence
+
+actor User
+participant Session order 10
+participant ConnectionPool order 20
+participant Persistent order 30
+participant Connection order 40
+participant PersistentProxy order 15
+
+User ->> Session: transact
+activate Session
+Session ->> ConnectionPool: acquire
+
+activate ConnectionPool
+create Connection
+ConnectionPool ->> Connection: get or create
+deactivate ConnectionPool
+Session ->> Persistent: open by id
+activate Persistent
+Persistent ->> Connection: query by id
+deactivate Persistent
+activate Connection
+Connection -->> Persistent: ResultSet
+deactivate Connection
+activate Persistent
+create PersistentProxy
+Persistent -> PersistentProxy : create proxy
+Persistent -->> Session : Proxy
+deactivate Persistent
+Session -> PersistentProxy: set property
+activate PersistentProxy
+PersistentProxy -> PersistentProxy: update dirty properties
+activate PersistentProxy
+deactivate PersistentProxy
+deactivate PersistentProxy
+Session ->> PersistentProxy: save
+activate PersistentProxy
+PersistentProxy ->> Connection: save dirty proeprties
+deactivate PersistentProxy
+activate Connection
+Connection -->> Session: status
+deactivate Connection
+Session ->> Connection: commit
+activate Connection
+Connection -->> Session: status
+deactivate Connection
+deactivate PersistentProxy
+Session -> ConnectionPool: release
+activate ConnectionPool
+ConnectionPool -> ConnectionPool: put connection to pool
+activate ConnectionPool
+ConnectionPool -> Connection
+destroy Connection
+deactivate ConnectionPool
+deactivate ConnectionPool
+Session -->> User : transaction result
+deactivate Session
+
+@enduml

@@ -75,4 +75,7 @@ typings/
 
 .vscode
 
-# Do not forget .npmignore
+# Do not include tests, detailed docs, etc
+demo/**
+docs/**
+test/**

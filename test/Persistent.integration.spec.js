@@ -10,7 +10,7 @@ const expect = require('chai').expect;
 
 const Promise = require('bluebird').Promise;
 
-const nc = require('../js/nc-wrapper');
+const db = require('../js/wrapper');
 
 const Persistent = require('../js/Persistent');
 
@@ -35,7 +35,7 @@ describe('Persistent spec', function() {
     };
 
     before(function() {
-        const connection = nc.createConnection();
+        const connection = db.createConnection();
 
         return connection.connectPromise(dsn)
         .then(() => connection.executePromise(`
@@ -192,7 +192,7 @@ describe('Persistent spec', function() {
     });
 
     after(function() {
-        const connection = nc.createConnection();
+        const connection = db.createConnection();
         return connection.connectPromise(dsn)
         .then(() => connection.executePromise(`
             DROP TABLE ${schema}.${tableName}

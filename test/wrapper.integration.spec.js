@@ -11,7 +11,7 @@ const expect = require('chai').expect;
 const Bluebird = require('bluebird')
 const Promise = Bluebird.Promise;
 
-const nc = require('../js/nc-wrapper');
+const db = require('../js/wrapper');
 
 describe('Wrapper spec', function() {
     this.timeout(config['timeout']);
@@ -19,7 +19,7 @@ describe('Wrapper spec', function() {
     const tableName = 'Sample.EmployeeTestTable';
 
     before(function() {
-        const connection = nc.createConnection();
+        const connection = db.createConnection();
 
         return connection.connectPromise(dsn)
         .then(() => connection.executePromise(`
@@ -45,13 +45,13 @@ describe('Wrapper spec', function() {
     });
 
     it('Should create connection', function() {
-        const connection = nc.createConnection();
+        const connection = db.createConnection();
 
         expect(connection).to.exist;
     });
 
     it('should query from prepared statement', function() {
-        const connection = nc.createConnection();
+        const connection = db.createConnection();
 
         return connection.connectPromise(dsn)
         .then(() => connection.prepareStatementPromise(`
@@ -75,7 +75,7 @@ describe('Wrapper spec', function() {
     });
 
     it('should query with empty result', function() {
-        const connection = nc.createConnection();
+        const connection = db.createConnection();
 
         return connection.connectPromise(dsn)
         .then(() => connection.prepareStatementPromise(`
@@ -94,7 +94,7 @@ describe('Wrapper spec', function() {
     })
 
     it('should commit statements in transaction', function() {
-        const connection = nc.createConnection(dsn);
+        const connection = db.createConnection(dsn);
 
         return Promise.coroutine(function*() {
             yield connection.connectPromise(dsn);
@@ -132,7 +132,7 @@ describe('Wrapper spec', function() {
     });
 
     it('should rollback statements in transaction', function() {
-        const connection = nc.createConnection(dsn);
+        const connection = db.createConnection(dsn);
 
         return Promise.coroutine(function*() {
             yield connection.connectPromise(dsn);
@@ -158,7 +158,7 @@ describe('Wrapper spec', function() {
 
 
     after(function() {
-        return nc.createConnectionPromise(dsn)
+        return db.createConnectionPromise(dsn)
         .tap(c => c.executePromise(`DROP TABLE ${tableName}`))
         .tap(c => c.closePromise());
     });

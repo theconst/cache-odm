@@ -1,11 +1,11 @@
 const config = require('./config');
-const nc = require('./nc-wrapper');
+const db = require('./wrapper');
 const Promise = require('bluebird').Promise;
 const genericPool = require("generic-pool");
 
 
 const factory = {
-    create: () => nc.createConnectionPromise(config["dsn"]),
+    create: () => db.createConnectionPromise(config["dsn"]),
     destroy: connection => connection.closePromise(),
     validate: connection => connection.connectedPromise(),
 };

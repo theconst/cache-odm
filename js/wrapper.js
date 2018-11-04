@@ -1,6 +1,6 @@
 'use strict'
 
-const nc = require('nanodbc');
+const db = require('cache-odbc');
 const {promisifyAll, Promise} = require('bluebird');
 
 const LRU = require('lru-cache');
@@ -13,7 +13,7 @@ const config = require('./config');
 
 const log = require('./logger');
 
-class Statement extends nc.ODBCStatement {
+class Statement extends db.ODBCStatement {
 
     constructor(conneciton) {
         super(conneciton);
@@ -37,7 +37,7 @@ class Statement extends nc.ODBCStatement {
 }
 promisifyAll(Statement.prototype, promisifySettings);
 
-class Transaction extends nc.ODBCTransaction {
+class Transaction extends db.ODBCTransaction {
     constructor(connection) {
         super(connection);
     }
@@ -46,7 +46,7 @@ promisifyAll(Transaction.prototype, promisifySettings);
 
 const transaction = Symbol('transaction');
 const statementCache = Symbol('statementCache');
-class Connection extends nc.ODBCConnection {
+class Connection extends db.ODBCConnection {
     constructor(options) {
         super();
         this[statementCache] = LRU(options && options.cacheSize || config['cacheSize']);

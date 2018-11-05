@@ -3,6 +3,10 @@
 Object document mapping for intersystems Caché database.
 Write node.js code just like you would write ObjectScript.
 
+## Current status
+
+Alpha quality
+
 Check out the example below.
 
 ```javascript

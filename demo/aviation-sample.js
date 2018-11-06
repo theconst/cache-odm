@@ -1,9 +1,11 @@
-const Persistent = require('../js/Persistent');
-const Session = require('../js/Session');
+const odm = require('../index')({
+    "dsn": "DSN=CacheWinHost",
+});
 
-const Reader = require('../js/Reader');
-
-const ft = require('../js/functools');
+const Persistent = odm.Persistent;
+const Session = odm.Session;
+const Reader = odm.Reader;
+const ft = odm.functools;
 
 require('console.table');
 

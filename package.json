@@ -1,5 +1,5 @@
 {
-  "name": "cache-persistent",
+  "name": "cache-simple-orm",
   "version": "0.0.1",
   "description": "Minimalistic ORM for Intersystems Cache",
   "main": "index.js",

@@ -4,11 +4,13 @@ require('console.table');
 
 const config = require('./config');
 
+require('../js/config').override({
+    "dsn": "DSN=CacheWinHost",
+});
+
 const dsn = config['dsn'];
 
 const expect = require('chai').expect;
-
-const Promise = require('bluebird').Promise;
 
 const db = require('../js/wrapper');
 

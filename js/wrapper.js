@@ -1,7 +1,7 @@
 'use strict'
 
-const db = require('cache-odbc');
-const {promisifyAll, Promise} = require('bluebird');
+const db = require('cacheodbc');
+const promisifyAll = require('bluebird').promisifyAll;
 
 const LRU = require('lru-cache');
 

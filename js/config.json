@@ -1,8 +1,0 @@
-{
-    "poolSizeMin" : 3,
-    "poolSizeMax" : 3,
-    "cacheSize": 10,
-    "evictionInterval" : 60000,
-    "dsn": "DSN=CacheWinHost",
-    "defaultNamespace": "SQLUser"
-}

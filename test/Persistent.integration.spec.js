@@ -29,6 +29,14 @@ describe('Persistent spec', function() {
 
     class EmployeeTest extends Persistent {
 
+        beforePropertySet() {
+            console.log('callback before');
+        }
+
+        afterPropertyGet() {
+            console.log('callback after');
+        }
+
     }
 
     EmployeeTest.description = {
@@ -126,7 +134,7 @@ describe('Persistent spec', function() {
         const john = new EmployeeTest();
         john.id = 5;
         john.lastName = 'Smith';
-        john.fistName = 'John';
+        john.firstName = 'John';
 
         return Session.transact(() => {
             const saved = john.save();
@@ -173,7 +181,7 @@ describe('Persistent spec', function() {
         const john = new EmployeeTest();
         john.id = 5;
         john.lastName = 'Smith';
-        john.fistName = 'John';
+        john.firstName = 'John';
 
         Session.transact(() => {
             const saved = john.save();

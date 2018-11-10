@@ -201,6 +201,20 @@ describe('Persistent spec', function() {
         });        
     });
 
+    it('should find all', function() {
+        const john = new EmployeeTest();
+        john.id = 5;
+        john.lastName = 'Smith';
+        john.firstName = 'John';
+
+        Session.transact(() => {
+            const saved = john.save();
+
+            return saved.flatMap(() => EmployeeTest.findAll())
+                .tap(r => expect(r).to.exist);
+        });  
+    });
+
     after(function() {
         const connection = db.createConnection();
         return connection.connectPromise(dsn)

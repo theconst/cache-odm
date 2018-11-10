@@ -189,6 +189,17 @@ class Persistent {
         }));
     } 
 
+    static findAll() {
+        const self = this;
+        return self._getSchemaPromise()
+            .flatMap(schema => Reader(connection => {
+                return connection
+                    .prepareStatementPromise(`SELECT * FROM ${schema.table}`)
+                    .then(statement => statement.queryPromise())
+                    .then(result => result.map(x => self._fromResult(x)));
+            }));
+    }
+
     attach() {
         return this.constructor._getSchemaPromise()
             .flatMap(schema => this.constructor.openId(

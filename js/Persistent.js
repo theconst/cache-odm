@@ -30,6 +30,11 @@ class Persistent {
         return this.description && this.description.namespace || defaultNamespace;
     }
 
+    static _mergeProjection(projection, schema) {
+        return projection && Array.from(new Set([...schema.nonNullKeys, ...projection]))
+            || schema.fields;
+    }
+
     static _getSchemaPromise() {
         const constructor = this;
         return Reader(connection => Promise.resolve(constructor[schema] ||
@@ -189,12 +194,14 @@ class Persistent {
         }));
     } 
 
-    static findAll() {
+    static findAll(projection) {
         const self = this;
         return self._getSchemaPromise()
             .flatMap(schema => Reader(connection => {
+                const fields = self._mergeProjection(projection, schema);
+                const csFields = fields.join(',');
                 return connection
-                    .prepareStatementPromise(`SELECT * FROM ${schema.table}`)
+                    .prepareStatementPromise(`SELECT ${csFields} FROM ${schema.table}`)
                     .then(statement => statement.queryPromise())
                     .then(result => result.map(x => self._fromResult(x)));
             }));
@@ -214,9 +221,7 @@ class Persistent {
             .flatMap(schema => Reader(connection => {
                 log.log('debug', 'Schema: %j', schema);
 
-                const fields = projection && Array.from(new Set([...schema.nonNullKeys, ...projection])) 
-                    || schema.fields;
-
+                const fields = self.constructor._mergeProjection(projection, schema);
                 const csFields = fields.join(',');
                 const placeholders = fields.map(() => '?').join(',');
                 const query = `INSERT OR UPDATE INTO ${schema.table}(${csFields}) VALUES(${placeholders})`;

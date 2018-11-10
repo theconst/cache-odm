@@ -1,6 +1,6 @@
 {
   "name": "cache-simple-orm",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Minimalistic ORM for Intersystems Cache",
   "main": "index.js",
   "scripts": {

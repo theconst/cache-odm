@@ -230,8 +230,8 @@ class Persistent {
         const values = fields
             .map(f => {
                 const value = this[f];
-                if (!value) {
-                    return 'NULL';
+                if (value === null || value === undefined) {
+                    return null;
                 }
                 return Converter.convert(value, schema.types[f]);
             });

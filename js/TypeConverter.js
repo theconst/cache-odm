@@ -1,15 +1,36 @@
-const handleDate = date => ({
-    'day': date.getDay(),
-    'month': date.getMonth() + 1,
-    'year': date.getFullYear(),
-});
+const tryParseDate = date => {
+    const type = typeof date;
 
-const handleDateTime = datetime => Object.assign(handleDate(datetime), {
-    'hours': datetime.getHours(),
-    'minutes': datetime.getMinutes(),
-    'seconds': datetime.getSeconds(),
-    'fractionalSeconds': datetime.getMilliseconds(),
-});
+    if (type === 'string') {
+        return new Date(date);
+    } else if (type === 'object') {
+        return date;
+    } else if (type === 'number') {
+        return new Date(date);
+    } else {
+        throw new TypeError('Cannot coerce to date type');
+    }
+};
+
+const handleDate = date => {
+    const parsed = tryParseDate(date);
+
+    return {
+        'day': parsed.getDay(),
+        'month': parsed.getMonth() + 1,
+        'year': parsed.getFullYear(),
+    };
+};
+
+const handleDateTime = datetime => {
+    const parsed = tryParseDate(datetime);
+    return Object.assign(handleDate(parsed), {
+        'hours': parsed.getHours(),
+        'minutes': parsed.getMinutes(),
+        'seconds': parsed.getSeconds(),
+        'fractionalSeconds': parsed.getMilliseconds(),
+    })
+};
 
 module.exports = {
     convert: (value, type) => {

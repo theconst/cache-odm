@@ -156,7 +156,7 @@ describe('Persistent spec', function() {
                 })
                 .flatMap(r => {
                     r.lastName = 'Wesson';
-                    return r.save();
+                    return r.update();
                 });
         })).then(() => Session.transact(() => {
             return EmployeeTest.openId(6);

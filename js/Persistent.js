@@ -30,11 +30,6 @@ class Persistent {
         return this.description && this.description.namespace || defaultNamespace;
     }
 
-    static _mergeProjection(projection, schema) {
-        return projection && Array.from(new Set([...schema.nonNullKeys, ...projection]))
-            || schema.fields;
-    }
-
     static getShema() {
         const constructor = this;
         return Reader(connection => Promise.resolve(constructor[schema] ||
@@ -206,7 +201,7 @@ class Persistent {
         const self = this;
         return self.getShema()
             .flatMap(schema => Reader(connection => {
-                const fields = self._mergeProjection(projection, schema);
+                const fields = projection || schema.fields;
                 const csFields = fields.join(',');
                 return connection
                     .prepareStatementPromise(`SELECT ${csFields} FROM ${schema.table}`)
@@ -216,10 +211,18 @@ class Persistent {
     }
 
     attach() {
+        const self = this;
         return this.constructor.getShema()
-            .flatMap(schema => this.constructor.openId(
-                schema.primaryKeys.map(k => ({[k]: this[k]}))
-                .reduce(Object.assign, {})));
+            .flatMap(schema => self.constructor.openId(
+                schema.primaryKeys.map(k => ({[k]: self[k]}))
+                .reduce(Object.assign, {})))
+            .map(object => {
+                if (object) {
+                    return Object.assign(object, self);
+                } else {
+                    return object;
+                }
+            });
     }
 
     _convertValues(fields, schema) {
@@ -250,11 +253,11 @@ class Persistent {
             .flatMap(schema => {
                 log.log('debug', 'Schema: %j', schema);
 
-                const fields = self.constructor._mergeProjection(projection, schema);
+                const fields = [...(projection || Object.keys(self)) ];
                 const csFields = fields.join(',');
                 const placeholders = fields.map(() => '?').join(',');
 
-                const query = `INSERT OR UPDATE INTO ${schema.table}(${csFields}) VALUES(${placeholders})`;
+                const query = `INSERT INTO ${schema.table}(${csFields}) VALUES(${placeholders})`;
 
                 return self._executeDML(query, fields, schema);
             });
@@ -268,15 +271,15 @@ class Persistent {
 
                 const primaryKeys = schema.primaryKeys;
 
-                const fields = self.constructor._mergeProjection(projection, schema)
+                const fields = [ ...(projection || Object.keys(self)) ]
                     .filter(f => !primaryKeys.includes(f));
-
                 const fieldsToUpdate = fields
                     .map(f => `${f} = ?`)
                     .join(',');
                
                 const pks = primaryKeys.map(k => `${k} = ?`).join(' AND ');
                 const query = `UPDATE ${schema.table} SET ${fieldsToUpdate} WHERE ${pks}`;
+
                 log.log('debug', 'Update query: %s', query);
 
                 return self._executeDML(query, [...fields, ...primaryKeys], schema);

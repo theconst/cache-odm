@@ -48,12 +48,19 @@ class Persistent {
                 });
             }).then(fields => {
                 log.log('debug', 'Filter: %j', fields);
+                const columnNames = fields.map(f => f['cn']);
+
+                const typesMap = columnNames
+                    .map((cn, i) => ({[cn]: fields[i]['dt']}))  
+                    .reduce(Object.assign, {});
+
                 const cached = constructor[schema] = {
                     table: [constructor._getNamespace(), constructor._getTable()].join('.'),
                     primaryKeys: fields.filter(f => f['pk'] === 'YES').map(f => f['cn']),
-                    nonNullKeys: fields.filter(f => f['nb'] === 'NO' && f['ai'] !== 'YES').map(f => f['cn']),
-                    types: fields.map(f => f['dt']),
-                    fields: fields.map(f => f['cn']),
+                    nonNullKeys: fields.filter(f => f['nb'] === 'NO' && f['ai'] !== 'YES')
+                        .map(f => f['cn']),
+                    types: typesMap,
+                    fields: columnNames,
                 };
                 return cached;
             })));
@@ -227,10 +234,8 @@ class Persistent {
                 const query = `INSERT OR UPDATE INTO ${schema.table}(${csFields}) VALUES(${placeholders})`;
 
                 log.log('debug', 'Save query: %s', query);
-                
 
-                const values = fields.map((f, i) => 
-                    Converter.convert(this[f], schema.types[i]) || 'NULL');
+                const values = fields.map(f => Converter.convert(this[f], schema.types[f]) || 'NULL');
                 log.log('debug', 'Values: %s', values, {});
 
                 const result = connection.forcePrepareStatementPromise(query)

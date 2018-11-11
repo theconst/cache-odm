@@ -104,7 +104,7 @@ class Connection extends db.ODBCConnection {
                 cb(err, newStatement);
             });
         }
-        log.debug('Forcing `%s` udpdate', query)
+        log.debug('Forcing `%s` update', query)
         const cache = this[statementCache];
         const statement = cache.get(query);
         if (statement) {

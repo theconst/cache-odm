@@ -41,7 +41,8 @@ class Persistent {
                     bindings: bindings,
                     batchSize: defaultBatchSize,
                 });
-            }).then(fields => {
+            })
+            .then(fields => {
                 log.log('debug', 'Filter: %j', fields);
                 const columnNames = fields.map(f => f['cn']);
 
@@ -226,7 +227,14 @@ class Persistent {
     }
 
     _convertValues(fields, schema) {
-        const values = fields.map(f => Converter.convert(this[f], schema.types[f]) || 'NULL');
+        const values = fields
+            .map(f => {
+                const value = this[f];
+                if (!value) {
+                    return 'NULL';
+                }
+                return Converter.convert(value, schema.types[f]);
+            });
         log.log('debug', 'Converted values: %s', values);
 
         return values;

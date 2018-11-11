@@ -1,6 +1,5 @@
 const tryParseDate = date => {
     const type = typeof date;
-
     if (type === 'string') {
         return new Date(date);
     } else if (type === 'object') {
@@ -34,6 +33,9 @@ const handleDateTime = datetime => {
 
 module.exports = {
     convert: (value, type) => {
+        if (!value) {
+            return null;
+        }
         const handler = {
             'date': handleDate,
             'datetime': handleDateTime,

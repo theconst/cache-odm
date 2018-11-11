@@ -2,6 +2,8 @@ const log = require('./logger');
 
 const dirtyProperties = Symbol('dirtyProperties');
 
+const saveMethods = ['save', 'update'];
+
 class ProxyHandler {
 
     static set(target, name, value) {
@@ -17,10 +19,10 @@ class ProxyHandler {
     }
 
     static get(target, property) {
-        if (property === 'save') {
+        if (saveMethods.includes(property)) {
             const dirty = target[dirtyProperties];
             log.log('debug', 'Saving only dirty');
-            return projection => target['save'].call(target, projection || dirty);
+            return projection => target[property].call(target, projection || dirty);
         }
         return target[property];
     }

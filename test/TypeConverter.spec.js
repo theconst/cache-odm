@@ -44,4 +44,14 @@ describe('Persistent spec', function() {
         });
     });
 
+    it('should convert null and undefined to NULL', function() {
+        ['datetime', 'timestamp', 'datetime'].forEach(t => {
+            [null, undefined].forEach(v => {
+                const actual = sut.convert(v, t);
+
+                expect(actual).to.be.equal(null);
+            }); 
+        });
+    });
+
 });

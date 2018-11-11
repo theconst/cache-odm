@@ -29,14 +29,6 @@ describe('Persistent spec', function() {
 
     class EmployeeTest extends Persistent {
 
-        beforePropertySet() {
-            console.log('callback before');
-        }
-
-        afterPropertyGet() {
-            console.log('callback after');
-        }
-
     }
 
     EmployeeTest.description = {
@@ -44,7 +36,7 @@ describe('Persistent spec', function() {
         name: tableName,
     };
 
-    before(function() {
+    beforeEach(function() {
         const connection = db.createConnection();
 
         return connection.connectPromise(dsn)
@@ -201,6 +193,30 @@ describe('Persistent spec', function() {
         });        
     });
 
+
+    it('should modify entity with update', function() {
+        const john = new EmployeeTest();
+        john.id = 5;
+        john.lastName = 'Smith';
+        john.firstName = 'John';
+
+        return Session.transact(() => {
+            const saved = john.save();
+
+            return saved.flatMap(() => EmployeeTest.existsId(5))
+                .tap(r => expect(r).to.be.true)
+                .flatMap(() => EmployeeTest.openId(5))
+                .flatMap(john => {
+                    john.lastName = 'Wesson';
+                    return john.update();
+                })
+                .flatMap(() => EmployeeTest.openId(5))
+                .tap(wesson => {
+                    expect(wesson.lastName).to.be.equal('Wesson');
+                });
+        });        
+    });
+
     it('should find all', function() {
         const john = new EmployeeTest();
         john.id = 5;
@@ -215,14 +231,17 @@ describe('Persistent spec', function() {
         });  
     });
 
-    after(function() {
+    afterEach(function() {
         const connection = db.createConnection();
         return connection.connectPromise(dsn)
         .then(() => connection.executePromise(`
             DROP TABLE ${schema}.${tableName}
         `))
-        .finally(() => connection.closePromise())
-        .finally(() => pool.drain());
+        .finally(() => connection.closePromise());
     });
+
+    after(function() {
+        return pool.drain();
+    })
 
 });

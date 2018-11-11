@@ -35,7 +35,7 @@ class Persistent {
             || schema.fields;
     }
 
-    static _getSchemaPromise() {
+    static getShema() {
         const constructor = this;
         return Reader(connection => Promise.resolve(constructor[schema] ||
             connection.prepareStatementPromise(getSchemaQuery)
@@ -75,18 +75,19 @@ class Persistent {
     }
 
     static _resolveId(id, primaryKeys) {
-        if (typeof id === 'function') {
-            throw new TypeError('Id should be object or array');
+        const t = typeof id;
+        log.debug('Type of id is %s', t);
+        if (t === 'function') {
+            throw new TypeError('Id should be object, array of values of values');
         }
-        return (typeof id === 'object') 
-            ? primaryKeys.map(k => id[k])
-                : (typeof id === 'array')
-                ? id : [id];
+        return (t === 'object') 
+            ? primaryKeys.map(k => id[k]) 
+            : (t === 'array') ? id : [id];
     }
 
     static openId(id, projection) {
         const self = this;
-        return self._getSchemaPromise()
+        return self.getShema()
             .flatMap(schema => Reader(connection => {
                 log.log('debug', 'Schema: %s', schema);
 
@@ -137,7 +138,7 @@ class Persistent {
 
     static existsId(id) {
         const self = this;
-        return self._getSchemaPromise()
+        return self.getShema()
             .flatMap(schema => Reader(connection => {
                 log.log('debug', 'Schema: %s', schema);
 
@@ -164,7 +165,7 @@ class Persistent {
 
     static findBy(keyValue, projection) {
         const constructor = this;
-        return constructor._getSchemaPromise()
+        return constructor.getShema()
             .flatMap(schema => Reader(connection => {
                 log.log('debug', 'Schema: %s', schema);
 
@@ -185,7 +186,7 @@ class Persistent {
 
     static deleteId(id) {
         const self = this;
-        return self._getSchemaPromise()
+        return self.getShema()
             .flatMap(schema => Reader(connection =>{
                 log.log('debug', 'Schema: %s', schema);
 
@@ -203,7 +204,7 @@ class Persistent {
 
     static findAll(projection) {
         const self = this;
-        return self._getSchemaPromise()
+        return self.getShema()
             .flatMap(schema => Reader(connection => {
                 const fields = self._mergeProjection(projection, schema);
                 const csFields = fields.join(',');
@@ -215,40 +216,76 @@ class Persistent {
     }
 
     attach() {
-        return this.constructor._getSchemaPromise()
+        return this.constructor.getShema()
             .flatMap(schema => this.constructor.openId(
                 schema.primaryKeys.map(k => ({[k]: this[k]}))
                 .reduce(Object.assign, {})));
     }
 
-    // never project onto user input - TODO: sanitize
+    _convertValues(fields, schema) {
+        const values = fields.map(f => Converter.convert(this[f], schema.types[f]) || 'NULL');
+        log.log('debug', 'Converted values: %s', values);
+
+        return values;
+    }
+
+    _executeDML(query, fields, schema) {
+        const self = this;
+        return Reader(connection => {
+            log.log('debug', 'Executing DML query: %s', query);
+
+            const values = this._convertValues(fields, schema);
+
+            log.log('debug', 'Values %j', values);
+    
+            return connection.forcePrepareStatementPromise(query)
+                .then(statement => statement.executePromise(values))
+                .then(() => PersistentProxy.createProxy(self));
+        });
+    }
+
     save(projection) {
         const self = this;
-        return self.constructor._getSchemaPromise()
-            .flatMap(schema => Reader(connection => {
+        return self.constructor.getShema()
+            .flatMap(schema => {
                 log.log('debug', 'Schema: %j', schema);
 
                 const fields = self.constructor._mergeProjection(projection, schema);
                 const csFields = fields.join(',');
                 const placeholders = fields.map(() => '?').join(',');
+
                 const query = `INSERT OR UPDATE INTO ${schema.table}(${csFields}) VALUES(${placeholders})`;
 
-                log.log('debug', 'Save query: %s', query);
+                return self._executeDML(query, fields, schema);
+            });
+    }
 
-                const values = fields.map(f => Converter.convert(this[f], schema.types[f]) || 'NULL');
-                log.log('debug', 'Values: %s', values, {});
+    update(projection) {
+        const self = this;
+        return self.constructor.getShema()
+            .flatMap(schema => {
+                log.log('debug', 'Schema: %j', schema);
 
-                const result = connection.forcePrepareStatementPromise(query)
-                    .then(statement => statement.executePromise(values))
-                    .then(() => PersistentProxy.createProxy(self));
+                const primaryKeys = schema.primaryKeys;
 
-                return result;
-            }));
+                const fields = self.constructor._mergeProjection(projection, schema)
+                    .filter(f => !primaryKeys.includes(f));
+
+                const fieldsToUpdate = fields
+                    .map(f => `${f} = ?`)
+                    .join(',');
+               
+                const pks = primaryKeys.map(k => `${k} = ?`).join(' AND ');
+                const query = `UPDATE ${schema.table} SET ${fieldsToUpdate} WHERE ${pks}`;
+                log.log('debug', 'Update query: %s', query);
+
+                return self._executeDML(query, [...fields, ...primaryKeys], schema);
+            });
     }
 
     delete() {
         const self = this;
-        return self.constructor._getSchemaPromise()
+        return self.constructor.getShema()
             .flatMap(schema => self.constructor.deleteId(schema.primaryKeys.map(k => self[k])));
     }
 

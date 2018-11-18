@@ -1,6 +1,6 @@
 {
   "name": "cache-simple-orm",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "description": "Minimalistic ORM for Intersystems Cache",
   "main": "index.js",
   "scripts": {
@@ -25,7 +25,7 @@
     "bluebird": "^3.5.2",
     "generic-pool": "^3.4.2",
     "lru-cache": "^4.1.3",
-    "cacheodbc": "^0.0.1",
+    "cacheodbc": "^0.0.2",
     "winston": "^3.1.0"
   },
   "files": [
